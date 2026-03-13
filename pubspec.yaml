@@ -70,6 +70,7 @@ flutter:
     - assets/Sign In Successful.json
     - assets/Profile Icon.json
     - assets/ezy_digi_pics.png
+    - assets/Growth Chart.json
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

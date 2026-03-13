@@ -3,6 +3,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../core/constants/app_colors.dart';
 import '../core/constants/app_sizes.dart';
+import '../features/auth/login_screen.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -56,7 +57,12 @@ class AppDrawer extends StatelessWidget {
               padding:
                   const EdgeInsets.symmetric(horizontal: AppSizes.paddingM),
               child: ElevatedButton.icon(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    (route) => false,
+                  );
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.accent,
                   foregroundColor: Colors.white,

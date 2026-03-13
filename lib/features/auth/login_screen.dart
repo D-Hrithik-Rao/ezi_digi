@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:glassmorphism/glassmorphism.dart';
-import 'package:iconsax/iconsax.dart';
 import 'package:lottie/lottie.dart';
-
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
 import '../../widgets/primary_button.dart';
@@ -58,9 +56,10 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final isSmall = size.height < 700;
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
           Container(
@@ -68,7 +67,7 @@ class _LoginScreenState extends State<LoginScreen> {
               gradient: LinearGradient(
                 colors: [AppColors.primary, AppColors.secondary],
                 begin: Alignment.topCenter,
-                end: Alignment.center,
+                end: Alignment.bottomCenter,
               ),
             ),
           ),
@@ -83,135 +82,172 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
           SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(AppSizes.paddingM),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSizes.paddingM),
               child: Column(
                 children: [
-                  SizedBox(height: isSmall ? 8 : 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: const [
-                      Icon(Iconsax.category, color: Colors.white),
-                      Text(
-                        'Welcome to',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                        ),
-                      ),
-                      SizedBox(width: 24),
-                    ],
+                  const SizedBox(height: 28),
+                  const Text(
+                    'Welcome to',
+                    style: TextStyle(color: Colors.white70, fontSize: 14),
                   ),
                   const SizedBox(height: 8),
-                  const Align(
-                    alignment: Alignment.center,
-                    child: Text(
-                      'Ezy Cable Digi',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 26,
-                        fontWeight: FontWeight.w700,
-                      ),
+                  const Text(
+                    'Ezy Cable Digi',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 26,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 24),
-                  Center(
-                    child: Image.asset(
-                      'assets/ezy_digi_pics.png',
-                      height: 80,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  GlassmorphicContainer(
-                    width: double.infinity,
-                    borderRadius: AppSizes.radiusXL,
-                    blur: 20,
-                    alignment: Alignment.center,
-                    border: 1,
-                    linearGradient: LinearGradient(
-                      colors: [
-                        Colors.white.withValues(alpha: 0.18),
-                        Colors.white.withValues(alpha: 0.05),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderGradient: LinearGradient(
-                      colors: [
-                        Colors.white.withValues(alpha: 0.4),
-                        Colors.white.withValues(alpha: 0.05),
-                      ],
-                    ),
-                    height: isSmall ? 360 : 400,
-                    child: Padding(
-                      padding: const EdgeInsets.all(AppSizes.paddingL),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Sign in to continue',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: AppSizes.paddingL),
-                          _GlassTextField(
-                            controller: _userController,
-                            hint: 'Username',
-                            icon: Iconsax.user,
-                            lottieAsset: 'assets/Profile Icon.json',
-                          ),
-                          const SizedBox(height: AppSizes.paddingM),
-                          _GlassTextField(
-                            controller: _passwordController,
-                            hint: 'Password',
-                            icon: Iconsax.lock,
-                            obscure: true,
-                            lottieAsset: 'assets/Login.json',
-                          ),
-                          const SizedBox(height: AppSizes.paddingS),
-                          Row(
-                            children: [
-                              Checkbox(
-                                value: _rememberMe,
-                                onChanged: (value) {
-                                  setState(() {
-                                    _rememberMe = value ?? false;
-                                  });
-                                },
-                                activeColor: AppColors.accent,
+                  Expanded(
+                    child: Stack(
+                      alignment: Alignment.topCenter,
+                      children: [
+                        Align(
+                          alignment: Alignment.topCenter,
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 520),
+                            child: Container(
+                              margin: const EdgeInsets.only(top: 38),
+                              decoration: BoxDecoration(
+                                borderRadius:
+                                    BorderRadius.circular(AppSizes.radiusXL),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.22),
+                                    blurRadius: 30,
+                                    spreadRadius: 1,
+                                    offset: const Offset(0, 16),
+                                  ),
+                                ],
                               ),
-                              const Text(
-                                'Remember me',
-                                style: TextStyle(
-                                  color: Colors.black,
+                              child: GlassmorphicContainer(
+                                width: double.infinity,
+                                height: 440,
+                                borderRadius: AppSizes.radiusXL,
+                                blur: 18,
+                                alignment: Alignment.center,
+                                border: 1.6,
+                                linearGradient: LinearGradient(
+                                  colors: [
+                                    Colors.white.withValues(alpha: 0.68),
+                                    Colors.white.withValues(alpha: 0.22),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
                                 ),
-                              ),
-                              const Spacer(),
-                              TextButton(
-                                onPressed: () {},
-                                child: const Text(
-                                  'Forgot Password?',
-                                  style: TextStyle(
-                                    color: Colors.black,
+                                borderGradient: LinearGradient(
+                                  colors: [
+                                    Colors.white.withValues(alpha: 0.95),
+                                    Colors.white.withValues(alpha: 0.35),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    AppSizes.paddingL,
+                                    56,
+                                    AppSizes.paddingL,
+                                    AppSizes.paddingL,
+                                  ),
+                                  child: SingleChildScrollView(
+                                    physics: const BouncingScrollPhysics(),
+                                    padding: EdgeInsets.only(
+                                      bottom: bottomInset > 0 ? 12 : 0,
+                                    ),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        _GlassTextField(
+                                          controller: _userController,
+                                          hint: 'Username',
+                                          lottieAsset:
+                                              'assets/Profile Icon.json',
+                                        ),
+                                        const SizedBox(height: AppSizes.paddingM),
+                                        _GlassTextField(
+                                          controller: _passwordController,
+                                          hint: 'Password',
+                                          obscureText: true,
+                                          lottieAsset: 'assets/Login.json',
+                                        ),
+                                        const SizedBox(height: AppSizes.paddingS),
+                                        Row(
+                                          children: [
+                                            Checkbox(
+                                              value: _rememberMe,
+                                              onChanged: (value) {
+                                                setState(() {
+                                                  _rememberMe =
+                                                      value ?? false;
+                                                });
+                                              },
+                                              activeColor: AppColors.accent,
+                                            ),
+                                            const Text(
+                                              'Remember Me',
+                                              style: TextStyle(
+                                                color: AppColors.textPrimary,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: AppSizes.paddingM),
+                                        PrimaryButton(
+                                          label: 'SIGN IN',
+                                          isLoading: _isLoading,
+                                          onPressed: _handleLogin,
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
+                            ),
+                          ),
+                        ),
+                        Container(
+                          height: 78,
+                          width: 78,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white,
+                            border: Border.all(
+                              color: AppColors.primary.withValues(alpha: 0.45),
+                              width: 4,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.14),
+                                blurRadius: 16,
+                                offset: const Offset(0, 10),
+                              ),
                             ],
                           ),
-                          const SizedBox(height: AppSizes.paddingM),
-                          PrimaryButton(
-                            label: 'SIGN IN',
-                            isLoading: _isLoading,
-                            onPressed: _handleLogin,
+                          child: Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: Image.asset('assets/ezy_digi_pics.png'),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'itpworld.com, All Rights Reserved',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
                 ],
               ),
             ),
@@ -225,58 +261,72 @@ class _LoginScreenState extends State<LoginScreen> {
 class _GlassTextField extends StatelessWidget {
   final TextEditingController controller;
   final String hint;
-  final IconData icon;
-  final bool obscure;
+  final bool obscureText;
   final String lottieAsset;
 
   const _GlassTextField({
     required this.controller,
     required this.hint,
-    required this.icon,
     required this.lottieAsset,
-    this.obscure = false,
+    this.obscureText = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final borderColor = AppColors.primary.withValues(alpha: 0.35);
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
+        color: Colors.white.withValues(alpha: 0.22),
         borderRadius: BorderRadius.circular(AppSizes.radiusM),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.45),
-          width: 1,
+          color: borderColor,
+          width: 1.2,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 14,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          const SizedBox(width: 8),
-          Icon(icon, color: Colors.white70, size: 22),
-          const SizedBox(width: 4),
-          SizedBox(
-            height: 40,
-            width: 40,
-            child: Lottie.asset(
-              lottieAsset,
-              fit: BoxFit.contain,
+          const SizedBox(width: 10),
+          RepaintBoundary(
+            child: SizedBox(
+              height: 40,
+              width: 40,
+              child: Lottie.asset(
+                lottieAsset,
+                fit: BoxFit.contain,
+                renderCache: RenderCache.raster,
+              ),
             ),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 6),
           Expanded(
             child: TextField(
               controller: controller,
-              style: const TextStyle(color: Colors.white),
-              obscureText: obscure,
+              obscureText: obscureText,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
               decoration: InputDecoration(
                 hintText: hint,
-                hintStyle: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w500,
+                hintStyle: TextStyle(
+                  color: AppColors.textSecondary.withValues(alpha: 0.85),
+                  fontWeight: FontWeight.w600,
                 ),
                 border: InputBorder.none,
                 isDense: true,
-                contentPadding:
-                    const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: 14,
+                  horizontal: 8,
+                ),
               ),
             ),
           ),
