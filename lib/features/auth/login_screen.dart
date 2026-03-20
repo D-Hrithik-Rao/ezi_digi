@@ -1,3 +1,4 @@
+import 'package:ezi_cable_digi/features/dashboard/dashboard_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:glassmorphism/glassmorphism.dart';
 import 'package:lottie/lottie.dart';
@@ -38,7 +39,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) => const SignInSuccessScreen(),
+          builder: (_) => const DashboardScreen(),
         ),
       );
     } else {

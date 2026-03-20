@@ -4,6 +4,9 @@ import 'package:iconsax/iconsax.dart';
 import '../core/constants/app_colors.dart';
 import '../core/constants/app_sizes.dart';
 import '../features/auth/login_screen.dart';
+import '../features/profile/user_profile_screen.dart';
+import '../features/settings/printer_settings_screen.dart';
+import '../features/search/search_customer_screen.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -17,40 +20,62 @@ class AppDrawer extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.all(AppSizes.paddingM),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 26,
-                    backgroundColor:
-                        AppColors.primary.withValues(alpha: 0.12),
-                    child: Image.asset(
-                      'assets/ezy_digi_pics.png',
-                      height: 32,
+              child: InkWell(
+                onTap: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const UserProfileScreen(),
                     ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(AppSizes.radiusL),
+                child: Container(
+                  padding: const EdgeInsets.all(AppSizes.paddingS),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF0288D1), Color(0xFF26C6DA)],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                    borderRadius: BorderRadius.circular(AppSizes.radiusL),
                   ),
-                  const SizedBox(width: AppSizes.paddingM),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Text(
-                        'Employee ID: EMP1023',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 26,
+                        backgroundColor:
+                            Colors.white.withValues(alpha: 0.15),
+                        child: Image.asset(
+                          'assets/ezy_digi_pics.png',
+                          height: 32,
                         ),
                       ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Last login: Today 09:32 AM',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textSecondary,
-                        ),
+                      const SizedBox(width: AppSizes.paddingM),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text(
+                            'EDD00485 (tap for profile)',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Last Login - 2026-03-16 10:28:56',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
+                ),
               ),
             ),
             Padding(
@@ -163,6 +188,28 @@ class _DrawerItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    void handleTap() {
+      Navigator.of(context).pop();
+      switch (label) {
+        case 'Search Customer':
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const SearchCustomerScreen(),
+            ),
+          );
+          break;
+        case 'Settings':
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const PrinterSettingsScreen(),
+            ),
+          );
+          break;
+        default:
+          break;
+      }
+    }
+
     return ListTile(
       leading: Icon(icon, size: 20, color: AppColors.textSecondary),
       title: Text(
@@ -172,7 +219,7 @@ class _DrawerItem extends StatelessWidget {
           color: AppColors.textPrimary,
         ),
       ),
-      onTap: () => Navigator.of(context).pop(),
+      onTap: handleTap,
     );
   }
 }
