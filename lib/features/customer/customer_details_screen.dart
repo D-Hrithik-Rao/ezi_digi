@@ -1,15 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
 import '../../core/data/customer.dart';
+import '../../core/database/database_helper.dart';
 import '../payment/payment_options_screen.dart';
+import 'customer_map_screen.dart';
+import 'location_preview_screen.dart';
 
-class CustomerDetailsScreen extends StatelessWidget {
+class CustomerDetailsScreen extends StatefulWidget {
   final Customer customer;
 
   const CustomerDetailsScreen({super.key, required this.customer});
+
+  @override
+  State<CustomerDetailsScreen> createState() => _CustomerDetailsScreenState();
+}
+
+class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
+  final _db = DatabaseHelper();
+  late Customer _customer;
+
+  @override
+  void initState() {
+    super.initState();
+    _customer = widget.customer;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,15 +70,15 @@ class CustomerDetailsScreen extends StatelessWidget {
         children: [
           _buildSectionHeader('CUSTOMER INFO'),
           const SizedBox(height: AppSizes.paddingM),
-          _detailRow('Customer Name', customer.name),
-          _detailRow('Nick Name', customer.nickName),
-          _detailRow('Mobile Number', customer.primaryMobileNumber),
-          _detailRow('Total Due', customer.totalDue),
-          _detailRow('Amount Payable', customer.amountPayable),
-          _detailRow('Customer Type', customer.customerType),
-          _detailRow('Group Name', customer.groupName),
-          _detailRow('Area Name', customer.areaName),
-          _detailRow('Address', customer.address),
+          _detailRow('Customer Name', _customer.name),
+          _detailRow('Nick Name', _customer.nickName),
+          _detailRow('Mobile Number', _customer.primaryMobileNumber),
+          _detailRow('Total Due', _customer.totalDue),
+          _detailRow('Amount Payable', _customer.amountPayable),
+          _detailRow('Customer Type', _customer.customerType),
+          _detailRow('Group Name', _customer.groupName),
+          _detailRow('Area Name', _customer.areaName),
+          _detailRow('Address', _customer.address),
         ],
       ),
     );
@@ -75,13 +94,27 @@ class CustomerDetailsScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSectionHeader('LOCATION'),
+          Row(
+            children: [
+              Expanded(child: _buildSectionHeader('LOCATION')),
+              IconButton(
+                onPressed: _openCustomerMap,
+                icon: const Icon(Icons.location_on, color: Colors.red),
+              ),
+            ],
+          ),
           const SizedBox(height: AppSizes.paddingM),
-          _detailRow('Last Paid Date', customer.lastPaidDate),
-          _detailRow('Bill Month', customer.billMonth),
-          _detailRow('LCO Customer id', customer.lcoCustomerId),
-          _detailRow('Box Number', customer.boxNumber),
-          _detailRow('VC Number', customer.vcNumber),
+          _detailRow('Last Paid Date', _customer.lastPaidDate),
+          _detailRow('Bill Month', _customer.billMonth),
+          _detailRow('LCO Customer id', _customer.lcoCustomerId),
+          _detailRow('Box Number', _customer.boxNumber),
+          _detailRow('VC Number', _customer.vcNumber),
+          _detailRow(
+            'Coordinates',
+            _customer.latitude != null && _customer.longitude != null
+                ? '${_customer.latitude}, ${_customer.longitude}'
+                : 'Not Updated',
+          ),
         ],
       ),
     );
@@ -198,9 +231,11 @@ class CustomerDetailsScreen extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => PaymentOptionsScreen(customer: customer),
+              builder: (context) => PaymentOptionsScreen(customer: _customer),
             ),
           );
+        } else if (label == 'Update Location') {
+          _showUpdateLocationDialog();
         } else {
           // Handle other operations
         }
@@ -229,6 +264,117 @@ class CustomerDetailsScreen extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showUpdateLocationDialog() async {
+    final controller = TextEditingController(text: _customer.areaName);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Update Location'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            hintText: 'Enter Your Area Name',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('NO'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('YES'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final areaName = controller.text.trim();
+    if (areaName.isEmpty) return;
+
+    final position = await Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+    );
+
+    if (!mounted) return;
+    final previewAccepted = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LocationPreviewScreen(
+          customerName: _customer.name,
+          areaName: areaName,
+          location: LatLng(position.latitude, position.longitude),
+        ),
+      ),
+    );
+
+    if (previewAccepted != true || !mounted) return;
+
+    final shouldSave = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Save Location'),
+        content: const Text(
+          'Do you want to save this location for this customer?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('NO'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('YES'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldSave != true) return;
+
+    await _db.updateCustomerLocation(
+      lcoCustomerId: _customer.lcoCustomerId,
+      areaName: areaName,
+      latitude: position.latitude,
+      longitude: position.longitude,
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _customer = _customer.copyWith(
+        areaName: areaName,
+        latitude: position.latitude,
+        longitude: position.longitude,
+      );
+    });
+  }
+
+  Future<void> _openCustomerMap() async {
+    if (_customer.latitude == null || _customer.longitude == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Update customer location first')),
+      );
+      return;
+    }
+
+    final current = await Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+    );
+
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CustomerMapScreen(
+          customer: _customer,
+          currentLocation: LatLng(current.latitude, current.longitude),
         ),
       ),
     );

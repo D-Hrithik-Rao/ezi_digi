@@ -3,10 +3,31 @@ import 'package:iconsax/iconsax.dart';
 
 import '../core/constants/app_colors.dart';
 import '../core/constants/app_sizes.dart';
+import '../core/services/offline_mode_service.dart';
+import '../core/services/offline_sync_service.dart';
 import '../features/auth/login_screen.dart';
 import '../features/profile/user_profile_screen.dart';
 import '../features/settings/printer_settings_screen.dart';
 import '../features/search/search_customer_screen.dart';
+import '../features/customers/nearest_customers_screen.dart';
+import '../features/offline/offline_dialogs.dart';
+import '../features/offline/download_records_screen.dart';
+import '../features/offline/static_content_screen.dart';
+
+/// The [Drawer] is disposed when it closes — its [BuildContext] is no longer
+/// [mounted]. Always use the [NavigatorState]'s context for the next route.
+void _closeDrawerThen(
+  BuildContext drawerContext,
+  void Function(BuildContext navigatorContext) action,
+) {
+  final navigator = Navigator.of(drawerContext);
+  navigator.pop();
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (navigator.context.mounted) {
+      action(navigator.context);
+    }
+  });
+}
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -15,19 +36,20 @@ class AppDrawer extends StatelessWidget {
   Widget build(BuildContext context) {
     return Drawer(
       child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
             Padding(
               padding: const EdgeInsets.all(AppSizes.paddingM),
               child: InkWell(
                 onTap: () {
-                  Navigator.of(context).pop();
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const UserProfileScreen(),
-                    ),
-                  );
+                  _closeDrawerThen(context, (navCtx) {
+                    Navigator.of(navCtx).push(
+                      MaterialPageRoute(
+                        builder: (_) => const UserProfileScreen(),
+                      ),
+                    );
+                  });
                 },
                 borderRadius: BorderRadius.circular(AppSizes.radiusL),
                 child: Container(
@@ -83,6 +105,7 @@ class AppDrawer extends StatelessWidget {
                   const EdgeInsets.symmetric(horizontal: AppSizes.paddingM),
               child: ElevatedButton.icon(
                 onPressed: () {
+                  OfflineModeService.instance.setOfflineMode(false);
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (_) => const LoginScreen()),
                     (route) => false,
@@ -102,12 +125,11 @@ class AppDrawer extends StatelessWidget {
                 label: const Text('Logout'),
               ),
             ),
-            const SizedBox(height: AppSizes.paddingM),
+            const SizedBox(height: AppSizes.paddingS),
             const Divider(height: 1),
-            const Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
                     _DrawerItem(
                       icon: Iconsax.element_3,
                       label: 'Dashboard',
@@ -152,25 +174,167 @@ class AppDrawer extends StatelessWidget {
                       icon: Iconsax.calendar_tick,
                       label: 'Calendar Event List',
                     ),
-                  ],
-                ),
-              ),
+                    const Divider(height: 24),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSizes.paddingM,
+                        vertical: 4,
+                      ),
+                      child: Text(
+                        'OFFLINE OPTIONS',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    ListTile(
+                      leading: const Icon(
+                        Icons.wifi_off,
+                        color: AppColors.primary,
+                        size: 22,
+                      ),
+                      title: const Text(
+                        'Switch to Offline Mode',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      onTap: () {
+                        _closeDrawerThen(context, (navCtx) async {
+                          await showSwitchToOfflineDialog(navCtx);
+                        });
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(
+                        Icons.download,
+                        color: AppColors.primary,
+                        size: 22,
+                      ),
+                      title: const Text(
+                        'Download Data(OFFLINE)',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      onTap: () {
+                        _closeDrawerThen(context, (navCtx) {
+                          Navigator.push(
+                            navCtx,
+                            MaterialPageRoute(
+                              builder: (_) => const DownloadRecordsScreen(),
+                            ),
+                          );
+                        });
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(
+                        Icons.sync,
+                        color: AppColors.primary,
+                        size: 22,
+                      ),
+                      title: const Text(
+                        'Sync/Clear Data',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      onTap: () {
+                        _closeDrawerThen(context, (navCtx) async {
+                          final ok = await showDialog<bool>(
+                            context: navCtx,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Sync / Clear'),
+                              content: const Text(
+                                'Sync pending offline payments to server (demo) and mark them cleared locally?',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx, false),
+                                  child: const Text('CANCEL'),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx, true),
+                                  child: const Text('OK'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (ok == true && navCtx.mounted) {
+                            final n = await OfflineSyncService.instance
+                                .syncPendingToServer();
+                            if (navCtx.mounted) {
+                              ScaffoldMessenger.of(navCtx).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    n > 0
+                                        ? 'Synced $n record(s) (demo — API later)'
+                                        : 'No pending records to sync',
+                                  ),
+                                ),
+                              );
+                            }
+                          }
+                        });
+                      },
+                    ),
+                    const Divider(height: 24),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSizes.paddingM,
+                        vertical: 4,
+                      ),
+                      child: Text(
+                        'Other',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    ListTile(
+                      title: const Text('About Us'),
+                      onTap: () {
+                        _closeDrawerThen(context, (navCtx) {
+                          Navigator.push(
+                            navCtx,
+                            MaterialPageRoute(
+                              builder: (_) => const StaticContentScreen(
+                                title: 'About Us',
+                                body: kDummyAboutUs,
+                              ),
+                            ),
+                          );
+                        });
+                      },
+                    ),
+                    ListTile(
+                      title: const Text('Privacy Policy'),
+                      onTap: () {
+                        _closeDrawerThen(context, (navCtx) {
+                          Navigator.push(
+                            navCtx,
+                            MaterialPageRoute(
+                              builder: (_) => const StaticContentScreen(
+                                title: 'Privacy Policy',
+                                body: kDummyPrivacyPolicy,
+                              ),
+                            ),
+                          );
+                        });
+                      },
+                    ),
+              ],
             ),
-            const Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: AppSizes.paddingM,
-                vertical: AppSizes.paddingS,
-              ),
-              child: Text(
-                'Offline Options',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -189,38 +353,50 @@ class _DrawerItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     void handleTap() {
-      Navigator.of(context).pop();
-      switch (label) {
-        case 'Search Customer':
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => const SearchCustomerScreen(),
-            ),
-          );
-          break;
-        case 'Settings':
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => const PrinterSettingsScreen(),
-            ),
-          );
-          break;
-        default:
-          break;
-      }
+      _closeDrawerThen(context, (navCtx) {
+        switch (label) {
+          case 'Search Customer':
+            Navigator.of(navCtx).push(
+              MaterialPageRoute(
+                builder: (_) => const SearchCustomerScreen(),
+              ),
+            );
+            break;
+          case 'Settings':
+            Navigator.of(navCtx).push(
+              MaterialPageRoute(
+                builder: (_) => const PrinterSettingsScreen(),
+              ),
+            );
+            break;
+          case 'Nearest Customer':
+            Navigator.of(navCtx).push(
+              MaterialPageRoute(
+                builder: (_) => const NearestCustomersScreen(),
+              ),
+            );
+            break;
+          default:
+            break;
+        }
+      });
     }
 
     return ListTile(
-      leading: Icon(icon, size: 20, color: AppColors.textSecondary),
+      leading: Icon(
+        icon,
+        size: 22,
+        color: AppColors.primary,
+      ),
       title: Text(
         label,
         style: const TextStyle(
           fontSize: 14,
-          color: AppColors.textPrimary,
+          color: AppColors.primary,
+          fontWeight: FontWeight.w700,
         ),
       ),
       onTap: handleTap,
     );
   }
 }
-

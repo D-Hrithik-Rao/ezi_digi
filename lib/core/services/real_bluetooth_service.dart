@@ -37,18 +37,36 @@ class RealBluetoothService {
   Future<bool> connectPrinter(String mac) async {
     try {
       if (!await requestPermissions()) return false;
+      await disconnectPrinter();
 
       final formatted = _formatMacAddress(mac);
 
       print("Connecting to $formatted");
 
-      return await PrintBluetoothThermal.connect(
+      final connectResult = await PrintBluetoothThermal.connect(
         macPrinterAddress: formatted,
       );
+
+      // Some devices report "connected" a moment later. Poll briefly so the
+      // first print doesn't get lost after fast navigation.
+      for (int i = 0; i < 6; i++) {
+        final isConnected = await PrintBluetoothThermal.connectionStatus;
+        if (isConnected) return connectResult;
+        await Future.delayed(const Duration(milliseconds: 300));
+      }
+
+      return connectResult;
     } catch (e) {
       print("Connect error: $e");
       return false;
     }
+  }
+
+  Future<void> disconnectPrinter() async {
+    try {
+      // Don't rely only on connectionStatus (it can lag).
+      await PrintBluetoothThermal.disconnect;
+    } catch (_) {}
   }
 
   // 🔹 Ensure connection (IMPORTANT)
@@ -63,7 +81,9 @@ class RealBluetoothService {
         return await connectPrinter(mac);
       }
 
-      await Future.delayed(const Duration(milliseconds: 300));
+      // Give the printer a small buffer window right after connect/ensure
+      // so the very first writeBytes doesn't get dropped.
+      await Future.delayed(const Duration(milliseconds: 600));
       return true;
 
     } catch (e) {
@@ -136,7 +156,7 @@ class RealBluetoothService {
 
       bytes.addAll(utf8.encode("\n   Thank You Visit Again!\n\n\n"));
 
-      await Future.delayed(const Duration(milliseconds: 300));
+      await Future.delayed(const Duration(milliseconds: 600));
 
       await PrintBluetoothThermal.writeBytes(bytes);
 

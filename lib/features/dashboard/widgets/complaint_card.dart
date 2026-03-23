@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:iconsax/iconsax.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
@@ -33,7 +32,7 @@ class ComplaintCard extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.only(bottom: AppSizes.paddingS),
-      padding: const EdgeInsets.all(AppSizes.paddingM),
+      padding: const EdgeInsets.all(AppSizes.paddingS),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppSizes.radiusM),
@@ -45,80 +44,91 @@ class ComplaintCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 4,
-                  horizontal: 8,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    complaintId,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                 ),
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 4,
+                    horizontal: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Text(
+                    statusText,
+                    style: TextStyle(
+                      color: statusColor,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
                 ),
-                child: Text(
-                  statusText,
-                  style: TextStyle(
-                    color: statusColor,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Name : $name',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              description,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: SizedBox(
+                height: 34,
+                child: ElevatedButton(
+                  onPressed: () {},
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSizes.paddingM,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppSizes.radiusM),
+                    ),
+                  ),
+                  child: const Text(
+                    'Update Status',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
               ),
-              const Spacer(),
-              Text(
-                complaintId,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSizes.paddingS),
-          Row(
-            children: [
-              const Icon(Iconsax.user, size: 16, color: AppColors.textSecondary),
-              const SizedBox(width: 6),
-              Text(
-                name,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            description,
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary,
             ),
-          ),
-          const SizedBox(height: AppSizes.paddingS),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              onPressed: () {},
-              icon: const Icon(Iconsax.edit, size: 16),
-              label: const Text('Update Status'),
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSizes.paddingS,
-                  vertical: 4,
-                ),
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

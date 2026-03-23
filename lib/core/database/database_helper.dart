@@ -2,6 +2,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../data/customer.dart';
 import '../data/payment.dart';
+import '../utils/money_parser.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
@@ -35,7 +36,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'ezi_cable_digi.db');
     return await openDatabase(
       path,
-      version: 2, // Increment version to force table recreation
+      version: 4,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -65,7 +66,9 @@ class DatabaseHelper {
           totalDue TEXT,
           amountPayable TEXT,
           billMonth TEXT,
-          boxNumber TEXT
+          boxNumber TEXT,
+          latitude REAL,
+          longitude REAL
         )
       ''');
       print('DatabaseHelper: Customers table created successfully');
@@ -83,7 +86,12 @@ class DatabaseHelper {
           transactionId TEXT NOT NULL,
           status TEXT NOT NULL,
           receiptPath TEXT,
-          smsSent INTEGER NOT NULL DEFAULT 0
+          smsSent INTEGER NOT NULL DEFAULT 0,
+          chequeNo TEXT,
+          bankName TEXT,
+          branch TEXT,
+          instrumentDate TEXT,
+          synced INTEGER NOT NULL DEFAULT 1
         )
       ''');
       print('DatabaseHelper: Payments table created successfully');
@@ -118,6 +126,18 @@ class DatabaseHelper {
         ''');
         print('DatabaseHelper: Payments table created in upgrade');
       }
+      if (oldVersion < 3) {
+        await db.execute('ALTER TABLE customers ADD COLUMN latitude REAL');
+        await db.execute('ALTER TABLE customers ADD COLUMN longitude REAL');
+      }
+      if (oldVersion < 4) {
+        await db.execute('ALTER TABLE payments ADD COLUMN chequeNo TEXT');
+        await db.execute('ALTER TABLE payments ADD COLUMN bankName TEXT');
+        await db.execute('ALTER TABLE payments ADD COLUMN branch TEXT');
+        await db.execute('ALTER TABLE payments ADD COLUMN instrumentDate TEXT');
+        await db.execute(
+            'ALTER TABLE payments ADD COLUMN synced INTEGER NOT NULL DEFAULT 1');
+      }
     } catch (e) {
       print('DatabaseHelper: Error upgrading database: $e');
       print('DatabaseHelper: Stack trace: ${StackTrace.current}');
@@ -127,7 +147,11 @@ class DatabaseHelper {
 
   Future<int> insertCustomer(Customer customer) async {
     final db = await database;
-    return await db.insert('customers', customer.toMap());
+    return await db.insert(
+      'customers',
+      customer.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   Future<List<Customer>> searchCustomers(String criteria, String query) async {
@@ -145,6 +169,7 @@ class DatabaseHelper {
         columnName = 'primaryMobileNumber';
         break;
       case 'Lco Customer Id':
+      case 'Lco  Customer Id':
         columnName = 'lcoCustomerId';
         break;
       case 'CRF Number':
@@ -194,6 +219,10 @@ class DatabaseHelper {
 
   Future<void> insertDemoData() async {
     final db = await database;
+    final existing = Sqflite.firstIntValue(
+      await db.rawQuery('SELECT COUNT(*) FROM customers'),
+    );
+    if ((existing ?? 0) > 0) return;
     
     final List<Customer> demoCustomers = [
       Customer(
@@ -216,6 +245,8 @@ class DatabaseHelper {
         amountPayable: '₹0',
         billMonth: '01-07-2023',
         boxNumber: 'DR12345705',
+        latitude: 17.445155,
+        longitude: 78.383269,
       ),
       Customer(
         altCustomerId: 'ALT002',
@@ -237,6 +268,8 @@ class DatabaseHelper {
         amountPayable: '₹500',
         billMonth: '01-07-2023',
         boxNumber: 'DR12345706',
+        latitude: 17.445420,
+        longitude: 78.383400,
       ),
       Customer(
         altCustomerId: 'ALT003',
@@ -258,6 +291,8 @@ class DatabaseHelper {
         amountPayable: '₹1000',
         billMonth: '01-07-2023',
         boxNumber: 'DR12345707',
+        latitude: 17.444950,
+        longitude: 78.382900,
       ),
       Customer(
         altCustomerId: 'ALT004',
@@ -279,6 +314,8 @@ class DatabaseHelper {
         amountPayable: '₹0',
         billMonth: '01-07-2023',
         boxNumber: 'DR12345708',
+        latitude: 17.445650,
+        longitude: 78.384000,
       ),
       Customer(
         altCustomerId: 'ALT005',
@@ -300,12 +337,59 @@ class DatabaseHelper {
         amountPayable: '₹750',
         billMonth: '01-07-2023',
         boxNumber: 'DR12345709',
+        latitude: 17.444600,
+        longitude: 78.383700,
       ),
     ];
 
     for (final customer in demoCustomers) {
-      await db.insert('customers', customer.toMap());
+      await db.insert(
+        'customers',
+        customer.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.ignore,
+      );
     }
+  }
+
+  Future<Customer?> getCustomerByLcoId(String lcoCustomerId) async {
+    final db = await database;
+    final maps = await db.query(
+      'customers',
+      where: 'lcoCustomerId = ?',
+      whereArgs: [lcoCustomerId],
+      limit: 1,
+    );
+    if (maps.isEmpty) return null;
+    return Customer.fromMap(maps.first);
+  }
+
+  Future<int> updateCustomerLocation({
+    required String lcoCustomerId,
+    required String areaName,
+    required double latitude,
+    required double longitude,
+  }) async {
+    final db = await database;
+    return db.update(
+      'customers',
+      {
+        'areaName': areaName,
+        'latitude': latitude,
+        'longitude': longitude,
+      },
+      where: 'lcoCustomerId = ?',
+      whereArgs: [lcoCustomerId],
+    );
+  }
+
+  Future<List<Customer>> getCustomersWithLocation() async {
+    final db = await database;
+    final maps = await db.query(
+      'customers',
+      where: 'latitude IS NOT NULL AND longitude IS NOT NULL',
+      orderBy: 'name ASC',
+    );
+    return maps.map(Customer.fromMap).toList();
   }
 
   Future<int> insertPayment(Payment payment) async {
@@ -334,13 +418,20 @@ class DatabaseHelper {
             transactionId TEXT NOT NULL,
             status TEXT NOT NULL,
             receiptPath TEXT,
-            smsSent INTEGER NOT NULL DEFAULT 0
+            smsSent INTEGER NOT NULL DEFAULT 0,
+            chequeNo TEXT,
+            bankName TEXT,
+            branch TEXT,
+            instrumentDate TEXT,
+            synced INTEGER NOT NULL DEFAULT 1
           )
         ''');
         print('DatabaseHelper: Payments table created manually');
       }
       
-      final result = await db.insert('payments', payment.toMap());
+      final map = Map<String, dynamic>.from(payment.toMap());
+      map.remove('id');
+      final result = await db.insert('payments', map);
       print('DatabaseHelper: Insert result: $result');
       
       if (result <= 0) {
@@ -394,5 +485,114 @@ class DatabaseHelper {
     );
 
     return maps.length;
+  }
+
+  Future<int> getCustomerCount() async {
+    final db = await database;
+    return Sqflite.firstIntValue(
+          await db.rawQuery('SELECT COUNT(*) FROM customers'),
+        ) ??
+        0;
+  }
+
+  /// Customers with pending or payable amount &gt; 0 (offline unpaid list).
+  Future<List<Customer>> getUnpaidCustomers({
+    bool onlyCurrentMonth = false,
+  }) async {
+    final db = await database;
+    final maps = await db.query('customers', orderBy: 'name ASC');
+    final now = DateTime.now();
+
+    return maps.map(Customer.fromMap).where((c) {
+      if (!isUnpaidCustomer(
+        amountPayable: c.amountPayable,
+        pendingAmount: c.pendingAmount,
+      )) {
+        return false;
+      }
+      if (onlyCurrentMonth) {
+        final bm = c.billMonth;
+        final y = '${now.year}';
+        final m = now.month.toString().padLeft(2, '0');
+        if (bm.contains(y) && bm.contains(m)) return true;
+        final lp = c.lastPaidDate.trim();
+        if (lp.isEmpty) return true;
+        return lp.contains('$m-$y') || lp.contains('$y');
+      }
+      return true;
+    }).toList();
+  }
+
+  Future<int> countUnsyncedPayments() async {
+    final db = await database;
+    return Sqflite.firstIntValue(
+          await db.rawQuery('SELECT COUNT(*) FROM payments WHERE synced = 0'),
+        ) ??
+        0;
+  }
+
+  Future<int> markAllPaymentsSynced() async {
+    final db = await database;
+    return db.update('payments', {'synced': 1}, where: 'synced = ?', whereArgs: [0]);
+  }
+
+  /// Today completed payments: cash/bank STB-style summary for miniday report.
+  Future<Map<String, dynamic>> getTodayCollectionSummary() async {
+    final db = await database;
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, now.day).toIso8601String();
+    final end = DateTime(now.year, now.month, now.day, 23, 59, 59, 999)
+        .toIso8601String();
+
+    final maps = await db.query(
+      'payments',
+      where: 'paymentDate >= ? AND paymentDate <= ? AND status = ?',
+      whereArgs: [start, end, 'completed'],
+    );
+
+    var cashCount = 0;
+    var bankCount = 0;
+    var cashAmount = 0.0;
+    var bankAmount = 0.0;
+
+    for (final m in maps) {
+      final method = (m['paymentMethod'] as String? ?? '').toLowerCase();
+      final amt = (m['amount'] as num?)?.toDouble() ?? 0;
+      if (method == 'cash') {
+        cashCount++;
+        cashAmount += amt;
+      } else {
+        bankCount++;
+        bankAmount += amt;
+      }
+    }
+
+    return {
+      'cashCount': cashCount,
+      'bankCount': bankCount,
+      'cashAmount': cashAmount,
+      'bankAmount': bankAmount,
+      'totalAmount': cashAmount + bankAmount,
+    };
+  }
+
+  Future<int> countPaymentsToday() async {
+    final s = await getTodayCollectionSummary();
+    return (s['cashCount'] as int) + (s['bankCount'] as int);
+  }
+
+  Future<List<Payment>> getPaymentsTodayList() async {
+    final db = await database;
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, now.day).toIso8601String();
+    final end = DateTime(now.year, now.month, now.day, 23, 59, 59, 999)
+        .toIso8601String();
+    final maps = await db.query(
+      'payments',
+      where: 'paymentDate >= ? AND paymentDate <= ? AND status = ?',
+      whereArgs: [start, end, 'completed'],
+      orderBy: 'paymentDate DESC',
+    );
+    return maps.map(Payment.fromMap).toList();
   }
 }

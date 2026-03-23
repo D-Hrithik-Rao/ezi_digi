@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../core/constants/app_colors.dart';
@@ -6,6 +8,7 @@ import '../../core/constants/app_sizes.dart';
 import '../../core/database/database_helper.dart';
 import '../../core/data/customer.dart';
 import '../customer/customer_details_screen.dart';
+import '../customer/customer_map_screen.dart';
 
 class SearchCustomerScreen extends StatefulWidget {
   const SearchCustomerScreen({super.key});
@@ -261,26 +264,67 @@ class _SearchCustomerScreenState extends State<SearchCustomerScreen> {
           _detailRow('Customer Type', customer.customerType),
           _detailRow('Address', customer.address),
           const SizedBox(height: AppSizes.paddingS),
-          Align(
-            alignment: Alignment.center,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => CustomerDetailsScreen(customer: customer),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey.shade300,
-                foregroundColor: AppColors.textPrimary,
-                elevation: 0,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CustomerDetailsScreen(customer: customer),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.grey.shade300,
+                  foregroundColor: AppColors.textPrimary,
+                  elevation: 0,
+                ),
+                child: const Text('View'),
               ),
-              child: const Text('View'),
+              IconButton(
+                onPressed: () => _openMapForCustomer(customer),
+                icon: const Icon(Icons.location_on, color: Colors.red),
+              ),
+            ],
+          ),
+          GestureDetector(
+            onTap: () => _openMapForCustomer(customer),
+            child: const Text(
+              'Location',
+              style: TextStyle(
+                color: Colors.red,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _openMapForCustomer(Customer customer) async {
+    if (customer.latitude == null || customer.longitude == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Customer location not updated yet')),
+      );
+      return;
+    }
+
+    final current = await Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+    );
+    if (!mounted) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CustomerMapScreen(
+          customer: customer,
+          currentLocation:
+              LatLng(current.latitude, current.longitude),
+        ),
       ),
     );
   }

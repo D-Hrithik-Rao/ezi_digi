@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
 import '../../core/data/customer.dart';
-import '../../core/database/database_helper.dart';
 import 'payment_confirmation_dialog.dart';
 import 'payment_details_screen.dart';
 
@@ -21,7 +20,6 @@ class _PaymentOptionsScreenState extends State<PaymentOptionsScreen> {
   final _mobileController = TextEditingController();
   String _paymentMethod = 'cash';
   bool _sendSms = false;
-  final DatabaseHelper _dbHelper = DatabaseHelper();
 
   @override
   Widget build(BuildContext context) {

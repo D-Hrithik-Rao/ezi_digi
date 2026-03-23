@@ -1,11 +1,14 @@
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:ezi_cable_digi/features/dashboard/dashboard_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:glassmorphism/glassmorphism.dart';
 import 'package:lottie/lottie.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
+import '../../core/services/location_sync_service.dart';
+import '../../core/services/offline_mode_service.dart';
+import '../offline/offline_dashboard_screen.dart';
 import '../../widgets/primary_button.dart';
-import 'success_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -19,6 +22,12 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
   bool _rememberMe = false;
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    LocationSyncService.instance.onScreenOpened(TrackingScreen.login);
+  }
 
   Future<void> _handleLogin() async {
     final username = _userController.text.trim();
@@ -37,9 +46,20 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (username == 'admin' && password == '123456') {
       if (!mounted) return;
+      final connectivity = await Connectivity().checkConnectivity();
+      final noNetwork = connectivity.contains(ConnectivityResult.none);
+      if (!mounted) return;
+
+      // If internet is available, go online (and clear any stale offline flag).
+      // If internet is not available, go offline dashboard.
+      await OfflineModeService.instance.setOfflineMode(noNetwork);
+      if (!mounted) return;
+
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => const DashboardScreen(),
+        MaterialPageRoute<void>(
+          builder: (_) => noNetwork
+              ? const OfflineDashboardScreen()
+              : const DashboardScreen(),
         ),
       );
     } else {

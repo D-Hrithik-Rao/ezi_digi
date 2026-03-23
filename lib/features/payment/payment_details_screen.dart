@@ -2,11 +2,9 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/constants/app_colors.dart';
@@ -212,6 +210,7 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
         transactionId: transactionId,
         status: 'completed',
         smsSent: widget.sendSms,
+        synced: true,
       );
 
       final id = await _dbHelper.insertPayment(tempPayment);
@@ -227,6 +226,7 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
         transactionId: transactionId,
         status: 'completed',
         smsSent: widget.sendSms,
+        synced: true,
       );
 
       setState(() {
@@ -303,14 +303,5 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
     );
 
     return pdf.save();
-  }
-
-  Future<void> _sendSmsNotification() async {
-    final smsUrl =
-        'sms:${widget.mobileNumber}?body=Paid ₹${widget.amount} Txn: ${_payment?.transactionId}';
-
-    if (await canLaunchUrl(Uri.parse(smsUrl))) {
-      await launchUrl(Uri.parse(smsUrl));
-    }
   }
 }

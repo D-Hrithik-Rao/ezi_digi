@@ -10,6 +10,12 @@ class Payment {
   final String status; // 'pending', 'completed', 'failed'
   final String receiptPath;
   final bool smsSent;
+  final String chequeNo;
+  final String bankName;
+  final String branch;
+  final String instrumentDate;
+  /// 0 = pending server sync (offline), 1 = synced
+  final bool synced;
 
   Payment({
     this.id,
@@ -23,6 +29,11 @@ class Payment {
     this.status = 'pending',
     this.receiptPath = '',
     this.smsSent = false,
+    this.chequeNo = '',
+    this.bankName = '',
+    this.branch = '',
+    this.instrumentDate = '',
+    this.synced = true,
   });
 
   Map<String, dynamic> toMap() {
@@ -38,6 +49,11 @@ class Payment {
       'status': status,
       'receiptPath': receiptPath,
       'smsSent': smsSent ? 1 : 0,
+      'chequeNo': chequeNo,
+      'bankName': bankName,
+      'branch': branch,
+      'instrumentDate': instrumentDate,
+      'synced': synced ? 1 : 0,
     };
   }
 
@@ -54,6 +70,11 @@ class Payment {
       status: map['status'] ?? 'pending',
       receiptPath: map['receiptPath'] ?? '',
       smsSent: (map['smsSent'] ?? 0) == 1,
+      chequeNo: map['chequeNo'] ?? '',
+      bankName: map['bankName'] ?? '',
+      branch: map['branch'] ?? '',
+      instrumentDate: map['instrumentDate'] ?? '',
+      synced: (map['synced'] ?? 1) == 1,
     );
   }
 }

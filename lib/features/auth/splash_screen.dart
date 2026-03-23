@@ -1,10 +1,13 @@
 import 'dart:async';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
+import '../../core/services/offline_mode_service.dart';
+import '../offline/offline_dashboard_screen.dart';
 import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -18,11 +21,36 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Timer(const Duration(seconds: 3), () {
+    unawaited(_goNext());
+  }
+
+  Future<void> _goNext() async {
+    await Future<void>.delayed(const Duration(seconds: 3));
+    if (!mounted) return;
+
+    final connectivity = await Connectivity().checkConnectivity();
+    final noNetwork = connectivity.contains(ConnectivityResult.none);
+    if (!mounted) return;
+
+    if (noNetwork) {
+      await OfflineModeService.instance.setOfflineMode(true);
+      if (!mounted) return;
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        MaterialPageRoute<void>(
+          builder: (_) => const OfflineDashboardScreen(),
+        ),
       );
-    });
+      return;
+    }
+
+    // If internet is available, always start in online mode.
+    // This prevents "stale" offline flag from showing the offline dashboard first.
+    await OfflineModeService.instance.setOfflineMode(false);
+
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
+    );
   }
 
   @override
@@ -69,4 +97,3 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 }
-

@@ -10,6 +10,7 @@ class SummaryCard extends StatelessWidget {
   final String subtitle;
   final Color color;
   final String? lottieAsset;
+  final bool hardVariant;
 
   const SummaryCard({
     super.key,
@@ -18,26 +19,34 @@ class SummaryCard extends StatelessWidget {
     required this.subtitle,
     required this.color,
     this.lottieAsset,
+    this.hardVariant = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    // "Light" variant keeps cards pastel like the reference.
+    // "Hard" variant uses stronger alpha/border so cards look punchier.
+    final a1 = hardVariant ? 0.42 : 0.16;
+    final a2 = hardVariant ? 0.18 : 0.04;
+    final borderA = hardVariant ? 1.0 : 0.85;
     return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 118),
+      constraints: const BoxConstraints(minHeight: 96),
       child: Container(
-        padding: const EdgeInsets.all(AppSizes.paddingM),
+        padding: const EdgeInsets.all(AppSizes.paddingS),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(AppSizes.radiusM),
           gradient: LinearGradient(
             colors: [
-              color.withValues(alpha: 0.16),
-              color.withValues(alpha: 0.04),
+              color.withValues(alpha: a1),
+              color.withValues(alpha: a2),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           border: Border.all(
-            color: AppColors.border.withValues(alpha: 0.85),
+            color: hardVariant
+                ? Colors.white.withValues(alpha: 0.75)
+                : AppColors.border.withValues(alpha: borderA),
             width: 0.7,
           ),
           boxShadow: [
@@ -58,27 +67,28 @@ class SummaryCard extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.textSecondary,
                       fontWeight: FontWeight.w600,
+                      color: hardVariant ? Colors.white70 : AppColors.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     amount,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color: hardVariant ? Colors.white : AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
-                      color: AppColors.textSecondary,
+                      color:
+                          hardVariant ? Colors.white70 : AppColors.textSecondary,
                     ),
                   ),
                 ],
@@ -87,8 +97,8 @@ class SummaryCard extends StatelessWidget {
             if (lottieAsset != null) ...[
               const SizedBox(width: AppSizes.paddingS),
               SizedBox(
-                height: 52,
-                width: 52,
+                height: 44,
+                width: 44,
                 child: Lottie.asset(
                   lottieAsset!,
                   fit: BoxFit.contain,
