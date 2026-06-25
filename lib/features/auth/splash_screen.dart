@@ -6,6 +6,7 @@ import 'package:lottie/lottie.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
+import '../../core/network/server_url_resolver.dart';
 import '../../core/services/offline_mode_service.dart';
 import '../offline/offline_dashboard_screen.dart';
 import 'login_screen.dart';
@@ -46,6 +47,18 @@ class _SplashScreenState extends State<SplashScreen> {
     // If internet is available, always start in online mode.
     // This prevents "stale" offline flag from showing the offline dashboard first.
     await OfflineModeService.instance.setOfflineMode(false);
+
+    // Resolve the real data-server URL from BMS (Android: CloudAuthentication).
+    // On success this stores login_serverUrl, used by Login + every later API.
+    try {
+      final resolved = await ServerUrlResolver.instance.resolve();
+      if (!resolved) {
+        // BMS refused / not registered → fall back to the last known URL, if any.
+        await ServerUrlResolver.instance.loadCached();
+      }
+    } catch (_) {
+      await ServerUrlResolver.instance.loadCached();
+    }
 
     if (!mounted) return;
     Navigator.of(context).pushReplacement(

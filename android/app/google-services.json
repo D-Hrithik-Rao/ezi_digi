@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "29959914106",
+    "project_id": "ezycabledigi",
+    "storage_bucket": "ezycabledigi.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:29959914106:android:7a48c2536c37ff87d931c3",
+        "android_client_info": {
+          "package_name": "com.ezy.cable.digi"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD36DdJlE_ZBjDp_oatbML3NCTlgma3rAI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

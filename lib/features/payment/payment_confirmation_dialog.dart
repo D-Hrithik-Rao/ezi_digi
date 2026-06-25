@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:iconsax/iconsax.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
@@ -37,15 +36,19 @@ class _PaymentConfirmationDialogState extends State<PaymentConfirmationDialog> {
   Future<void> _loadPaymentStats() async {
     try {
       final paymentCount = await _dbHelper.getCurrentMonthPaymentCount(widget.customer.lcoCustomerId);
-      setState(() {
-        _currentMonthPayments = paymentCount;
-        _currentMonthAdjustments = 0; // You can implement adjustment logic if needed
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _currentMonthPayments = paymentCount;
+          _currentMonthAdjustments = 0; // You can implement adjustment logic if needed
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -53,30 +56,90 @@ class _PaymentConfirmationDialogState extends State<PaymentConfirmationDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppSizes.radiusM),
+        borderRadius: BorderRadius.circular(8),
       ),
-      child: Container(
-        padding: const EdgeInsets.all(AppSizes.paddingL),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(AppSizes.radiusM),
-        ),
+      backgroundColor: Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildHeader(),
-            const SizedBox(height: AppSizes.paddingL),
+            // ── Title ──
+            const Text(
+              'Payment Confirmation',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 20),
+
             if (_isLoading)
-              const Center(
-                child: CircularProgressIndicator(),
-              )
+              const Center(child: CircularProgressIndicator())
             else ...[
-              _buildPaymentInfo(),
-              const SizedBox(height: AppSizes.paddingL),
-              _buildConfirmationMessage(),
-              const SizedBox(height: AppSizes.paddingL),
-              _buildButtons(),
+              // ── Info Rows ──
+              _infoRow('Last Paid Amount', widget.customer.pendingAmount.isEmpty ? '₹0.0' : widget.customer.pendingAmount),
+              _infoRow('Last Paid Date', widget.customer.lastPaidDate.isEmpty ? 'Code=0' : widget.customer.lastPaidDate),
+              _infoRow('Current Month\nPayments Count', _currentMonthPayments.toString()),
+              _infoRow('Current Month\nAdjustments Count', _currentMonthAdjustments.toString()),
+              
+              const SizedBox(height: 20),
+
+              // ── Confirmation Prompt ──
+              Text(
+                'Are you sure you want to continue Digital TV\nPayment ₹${widget.amount.toStringAsFixed(1)}?',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black,
+                  height: 1.4,
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // ── Action Buttons ──
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFC60000), // Red
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(2), // Sharp corners
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        elevation: 0,
+                      ),
+                      child: const Text('CANCEL',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF333399), // Navy Blue
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(2), // Sharp corners
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        elevation: 0,
+                      ),
+                      child: const Text('CONFIRM',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ],
         ),
@@ -84,168 +147,38 @@ class _PaymentConfirmationDialogState extends State<PaymentConfirmationDialog> {
     );
   }
 
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        vertical: 8,
-        horizontal: AppSizes.paddingM,
-      ),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0288D1), Color(0xFF26C6DA)],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: const Text(
-        'Payment Confirmation',
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w700,
-          fontSize: 16,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPaymentInfo() {
-    return Container(
-      padding: const EdgeInsets.all(AppSizes.paddingM),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(AppSizes.radiusS),
-      ),
-      child: Column(
-        children: [
-          _infoRow('Last Paid Amount', widget.customer.pendingAmount),
-          _infoRow('Last Paid Date', widget.customer.lastPaidDate),
-          _infoRow('Current Month Payments Count', _currentMonthPayments.toString()),
-          _infoRow('Current Month Adjustments Count', _currentMonthAdjustments.toString()),
-        ],
-      ),
-    );
-  }
-
   Widget _infoRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            flex: 2,
+            flex: 6,
             child: Text(
               label,
               style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+                height: 1.2,
               ),
             ),
           ),
+          const SizedBox(width: 16),
           Expanded(
-            flex: 1,
+            flex: 4,
             child: Text(
               value,
-              textAlign: TextAlign.right,
               style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: Colors.black,
               ),
             ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildConfirmationMessage() {
-    return Container(
-      padding: const EdgeInsets.all(AppSizes.paddingM),
-      decoration: BoxDecoration(
-        color: Colors.blue.shade50,
-        borderRadius: BorderRadius.circular(AppSizes.radiusS),
-        border: Border.all(color: Colors.blue.shade200),
-      ),
-      child: Column(
-        children: [
-          Icon(
-            Iconsax.info_circle,
-            color: Colors.blue.shade600,
-            size: 32,
-          ),
-          const SizedBox(height: AppSizes.paddingS),
-          Text(
-            'Are you sure you want to continue',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.blue.shade800,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Digital TV Payment ₹${widget.amount.toStringAsFixed(1)}?',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: Colors.blue.shade800,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildButtons() {
-    return Row(
-      children: [
-        Expanded(
-          child: ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: AppSizes.paddingM),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppSizes.radiusS),
-              ),
-            ),
-            child: const Text(
-              'CANCEL',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: AppSizes.paddingM),
-        Expanded(
-          child: ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: AppSizes.paddingM),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppSizes.radiusS),
-              ),
-            ),
-            child: const Text(
-              'CONFIRM',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

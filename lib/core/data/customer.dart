@@ -101,6 +101,37 @@ class Customer {
     );
   }
 
+  /// From the `unpaidCustomers` (uc) API response item.
+  /// Field names per MagikDigi Android (Unpaid_Fragment / UnpaidCustomerResult).
+  factory Customer.fromJson(Map<String, dynamic> json) {
+    String s(String key) => (json[key] ?? '').toString().trim();
+    final fullName =
+        [s('first_name'), s('last_name')].where((p) => p.isNotEmpty).join(' ');
+    final amount = s('amount');
+    final total = s('total');
+    return Customer(
+      altCustomerId: s('alt_cust_id'),
+      name: fullName,
+      primaryMobileNumber: s('mobile_no'),
+      lcoCustomerId: s('customer_id'),
+      crfNumber: s('crfno'),
+      serialNumber: '',
+      vcNumber: s('vc_number'),
+      nickName: s('nickname'),
+      secondaryMobileNumber: '',
+      pendingAmount: total.isEmpty ? '₹0' : '₹$total',
+      lastPaidDate: s('paid_on'),
+      customerType: s('customer_type'),
+      address: s('address1'),
+      groupName: '',
+      areaName: '',
+      totalDue: total.isEmpty ? '₹0' : '₹$total',
+      amountPayable: amount.isEmpty ? '₹0' : '₹$amount',
+      billMonth: s('bill_month'),
+      boxNumber: s('box_number'),
+    );
+  }
+
   Customer copyWith({
     int? id,
     String? altCustomerId,

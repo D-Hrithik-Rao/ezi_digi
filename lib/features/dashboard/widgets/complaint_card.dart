@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-
+import 'package:iconsax/iconsax.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
+import '../../complaints/complaint_details_screen.dart';
 
 enum ComplaintStatus { assigned, inProcess }
 
@@ -104,8 +105,21 @@ class ComplaintCard extends StatelessWidget {
               alignment: Alignment.centerRight,
               child: SizedBox(
                 height: 34,
-                child: ElevatedButton(
-                  onPressed: () {},
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ComplaintDetailsScreen(
+                          complaintId: complaintId,
+                          customerName: name,
+                          complaint: description,
+                          currentStatus: statusText,
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Iconsax.edit, size: 14),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
@@ -117,7 +131,7 @@ class ComplaintCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(AppSizes.radiusM),
                     ),
                   ),
-                  child: const Text(
+                  label: const Text(
                     'Update Status',
                     style: TextStyle(
                       fontWeight: FontWeight.w900,
@@ -133,4 +147,3 @@ class ComplaintCard extends StatelessWidget {
     );
   }
 }
-

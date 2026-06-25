@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:ezi_cable_digi/core/config/app_config.dart';
 import 'package:http/http.dart' as http;
 
 import '../../core/data/customer.dart';
@@ -40,10 +41,7 @@ class _CustomerMapScreenState extends State<CustomerMapScreen> {
   GoogleMapController? _mapController;
   DateTime? _lastCameraMoveAt;
 
-  static const String _googleMapsApiKey = String.fromEnvironment(
-    'GOOGLE_MAPS_API_KEY',
-    defaultValue: 'AIzaSyA9qW9ZZQMUotFvsqTf6C01wiNK-VDjliU',
-  );
+  static String get _googleMapsApiKey => AppConfig.instance.googleMapsApiKey;
 
   @override
   void initState() {
@@ -151,8 +149,9 @@ class _CustomerMapScreenState extends State<CustomerMapScreen> {
           }
         }
       });
-    } catch (_) {
-      // Ignore location stream failures to avoid crashing.
+    } catch (error, stackTrace) {
+      debugPrint('CustomerMapScreen: location stream failed: $error');
+      debugPrint(stackTrace.toString());
     }
   }
 
@@ -224,7 +223,9 @@ class _CustomerMapScreenState extends State<CustomerMapScreen> {
         _lastRouteOrigin = _current;
         _refreshPolylines();
       });
-    } catch (_) {
+    } catch (error, stackTrace) {
+      debugPrint('CustomerMapScreen: route fetch failed: $error');
+      debugPrint(stackTrace.toString());
       // Keep straight polyline if route fails.
     } finally {
       _isRouteLoading = false;

@@ -1,8 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
+
+import '../config/app_config.dart';
+import 'error_handler_service.dart';
 
 enum TrackingScreen { login, dashboard, other }
 
@@ -10,10 +14,9 @@ class LocationSyncService {
   LocationSyncService._();
   static final LocationSyncService instance = LocationSyncService._();
 
-  static const String _trackingEndpoint =
-      String.fromEnvironment('TRACKING_ENDPOINT', defaultValue: '');
-
   static const int _intervalSeconds = 30;
+
+  String get _trackingEndpoint => AppConfig.instance.trackingEndpoint;
 
   Timer? _dashboardTimer;
   bool _isSending = false;
@@ -65,7 +68,7 @@ class LocationSyncService {
       if (!hasPermission) return;
 
       if (_trackingEndpoint.isEmpty) {
-        // Keep app working even before backend endpoint is configured.
+        debugPrint('LocationSyncService: tracking endpoint not configured');
         return;
       }
 
@@ -87,8 +90,12 @@ class LocationSyncService {
         }),
       );
       _lastSentAt = DateTime.now();
-    } catch (_) {
-      // Silent fail for background-like tracking calls.
+    } catch (error, stackTrace) {
+      ErrorHandlerService.recordError(
+        error,
+        stackTrace,
+        reason: 'LocationSyncService._sendLocation',
+      );
     } finally {
       _isSending = false;
     }

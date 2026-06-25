@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../data/customer.dart';
+import '../data/collection_schedule.dart';
 import '../data/payment.dart';
 import '../utils/money_parser.dart';
 
@@ -36,7 +37,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'ezi_cable_digi.db');
     return await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -95,6 +96,22 @@ class DatabaseHelper {
         )
       ''');
       print('DatabaseHelper: Payments table created successfully');
+
+      print('DatabaseHelper: Creating collection_schedules table...');
+      await db.execute('''
+        CREATE TABLE collection_schedules (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          customerId TEXT NOT NULL,
+          customerName TEXT NOT NULL,
+          accountNumber TEXT,
+          employee TEXT,
+          status TEXT NOT NULL,
+          scheduleDate TEXT NOT NULL,
+          remarks TEXT,
+          createdAt TEXT NOT NULL
+        )
+      ''');
+      print('DatabaseHelper: Collection schedules table created successfully');
       
       print('DatabaseHelper: All tables created successfully');
     } catch (e) {
@@ -138,11 +155,83 @@ class DatabaseHelper {
         await db.execute(
             'ALTER TABLE payments ADD COLUMN synced INTEGER NOT NULL DEFAULT 1');
       }
+      if (oldVersion < 5) {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS collection_schedules (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customerId TEXT NOT NULL,
+            customerName TEXT NOT NULL,
+            accountNumber TEXT,
+            employee TEXT,
+            status TEXT NOT NULL,
+            scheduleDate TEXT NOT NULL,
+            remarks TEXT,
+            createdAt TEXT NOT NULL
+          )
+        ''');
+      }
     } catch (e) {
       print('DatabaseHelper: Error upgrading database: $e');
       print('DatabaseHelper: Stack trace: ${StackTrace.current}');
       rethrow;
     }
+  }
+
+  Future<int> insertCollectionSchedule(CollectionSchedule schedule) async {
+    final db = await database;
+    final map = Map<String, dynamic>.from(schedule.toMap());
+    map.remove('id');
+    return db.insert('collection_schedules', map);
+  }
+
+  Future<List<CollectionSchedule>> searchCollectionSchedules({
+    required DateTime startDate,
+    required DateTime endDate,
+    String? employee,
+    String? customerName,
+    String? accountNumber,
+    String? status,
+  }) async {
+    final db = await database;
+    final whereParts = <String>[];
+    final args = <Object?>[];
+
+    final start = DateTime(startDate.year, startDate.month, startDate.day);
+    final end = DateTime(endDate.year, endDate.month, endDate.day);
+    final startStr =
+        '${start.year}-${start.month.toString().padLeft(2, '0')}-${start.day.toString().padLeft(2, '0')}';
+    final endStr =
+        '${end.year}-${end.month.toString().padLeft(2, '0')}-${end.day.toString().padLeft(2, '0')}';
+
+    whereParts.add('scheduleDate >= ?');
+    args.add(startStr);
+    whereParts.add('scheduleDate <= ?');
+    args.add(endStr);
+
+    if (employee != null && employee.trim().isNotEmpty && employee != 'Choose') {
+      whereParts.add('employee = ?');
+      args.add(employee.trim());
+    }
+    if (status != null && status.trim().isNotEmpty && status != 'Choose') {
+      whereParts.add('status = ?');
+      args.add(status.trim());
+    }
+    if (customerName != null && customerName.trim().isNotEmpty) {
+      whereParts.add('customerName LIKE ?');
+      args.add('%${customerName.trim()}%');
+    }
+    if (accountNumber != null && accountNumber.trim().isNotEmpty) {
+      whereParts.add('accountNumber LIKE ?');
+      args.add('%${accountNumber.trim()}%');
+    }
+
+    final maps = await db.query(
+      'collection_schedules',
+      where: whereParts.isEmpty ? null : whereParts.join(' AND '),
+      whereArgs: args,
+      orderBy: 'scheduleDate DESC, id DESC',
+    );
+    return maps.map(CollectionSchedule.fromMap).toList();
   }
 
   Future<int> insertCustomer(Customer customer) async {
@@ -227,13 +316,13 @@ class DatabaseHelper {
     final List<Customer> demoCustomers = [
       Customer(
         altCustomerId: 'ALT001',
-        name: 'Banu',
+        name: 'Hrithik',
         primaryMobileNumber: '9876543210',
-        lcoCustomerId: 'Banu_21',
+        lcoCustomerId: 'Hrithik_23',
         crfNumber: 'CRF001',
         serialNumber: 'SN001',
         vcNumber: 'DR12345705',
-        nickName: 'Banu',
+        nickName: 'Hrithik',
         secondaryMobileNumber: '9876543211',
         pendingAmount: '₹0',
         lastPaidDate: '18-02-2026',
@@ -264,6 +353,52 @@ class DatabaseHelper {
         address: 'Chennai',
         groupName: 'DEFAULT',
         areaName: 'Area1',
+        totalDue: '₹15000',
+        amountPayable: '₹500',
+        billMonth: '01-07-2023',
+        boxNumber: 'DR12345706',
+        latitude: 17.445420,
+        longitude: 78.383400,
+      ),
+      Customer(
+        altCustomerId: 'ALT002',
+        name: 'Bala Subramanyam',
+        primaryMobileNumber: '9876543220',
+        lcoCustomerId: 'Bala_09',
+        crfNumber: 'CRF002',
+        serialNumber: 'SN002',
+        vcNumber: 'DR12345706',
+        nickName: 'Bala_kalyan',
+        secondaryMobileNumber: '9876543221',
+        pendingAmount: '₹500',
+        lastPaidDate: '15-02-2026',
+        customerType: 'STB',
+        address: 'Hyderabad',
+        groupName: 'DEFAULT',
+        areaName: 'Silparaman',
+        totalDue: '₹15000',
+        amountPayable: '₹500',
+        billMonth: '01-07-2023',
+        boxNumber: 'DR12345706',
+        latitude: 17.445420,
+        longitude: 78.383400,
+      ),
+      Customer(
+        altCustomerId: 'ALT002',
+        name: 'Kartik Ambati',
+        primaryMobileNumber: '9876543220',
+        lcoCustomerId: 'Kartik_cool_22',
+        crfNumber: 'CRF002',
+        serialNumber: 'SN002',
+        vcNumber: 'DR12345706',
+        nickName: 'Kartik',
+        secondaryMobileNumber: '9876543221',
+        pendingAmount: '₹500',
+        lastPaidDate: '15-02-2026',
+        customerType: 'STB',
+        address: 'Chennai',
+        groupName: 'DEFAULT',
+        areaName: 'Hi-Tech City',
         totalDue: '₹15000',
         amountPayable: '₹500',
         billMonth: '01-07-2023',
@@ -595,4 +730,57 @@ class DatabaseHelper {
     );
     return maps.map(Payment.fromMap).toList();
   }
+  Future<List<Customer>> getCustomersPaginated({
+  int limit = 20,
+  int offset = 0,
+}) async {
+  final db = await database;
+
+  final maps = await db.query(
+    'customers',
+    orderBy: 'name ASC',
+    limit: limit,
+    offset: offset,
+  );
+
+  return maps.map((e) => Customer.fromMap(e)).toList();
 }
+Future<List<Customer>> getFilteredCustomersPaginated({
+  int limit = 20,
+  int offset = 0,
+  String? customerType,
+  String? group,
+}) async {
+  final db = await database;
+
+  List<String> whereClauses = [];
+  List<dynamic> whereArgs = [];
+
+  if (customerType != null && customerType != 'Total Unpaid List') {
+    if (customerType == 'Active Customers') {
+      whereClauses.add("amountPayable = ?");
+      whereArgs.add('₹0');
+    } else if (customerType == 'Inactive Customers') {
+      whereClauses.add("amountPayable != ?");
+      whereArgs.add('₹0');
+    }
+  }
+
+  if (group != null && group != 'Select') {
+    whereClauses.add("groupName = ?");
+    whereArgs.add(group);
+  }
+
+  final maps = await db.query(
+    'customers',
+    where: whereClauses.isEmpty ? null : whereClauses.join(" AND "),
+    whereArgs: whereArgs,
+    orderBy: 'name ASC',
+    limit: limit,
+    offset: offset,
+  );
+
+  return maps.map((e) => Customer.fromMap(e)).toList();
+}
+
+} 

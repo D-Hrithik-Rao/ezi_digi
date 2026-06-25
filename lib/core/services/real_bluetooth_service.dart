@@ -1,28 +1,41 @@
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:convert';
+import 'dart:io';
 
 class RealBluetoothService {
 
-  // 🔹 Permissions
+  // 🔹 Permissions — simplified since startup already asked for them.
+  // This is a safety net in case the user denied at startup.
   Future<bool> requestPermissions() async {
+    if (!Platform.isAndroid) return true;
+
     try {
-      final result = await [
+      final results = await [
+        Permission.locationWhenInUse,
         Permission.bluetoothScan,
         Permission.bluetoothConnect,
-        Permission.location,
       ].request();
 
-      return (result[Permission.bluetoothConnect]?.isGranted ?? false) &&
-             ((result[Permission.bluetoothScan]?.isGranted ?? false) ||
-              (result[Permission.location]?.isGranted ?? false));
+      final allGranted = results.values.every((s) => s.isGranted);
+
+      if (!allGranted) {
+        final anyPermanentlyDenied =
+        results.values.any((s) => s.isPermanentlyDenied);
+        if (anyPermanentlyDenied) {
+          await openAppSettings();
+        }
+        return false;
+      }
+
+      return true;
     } catch (e) {
       print("Permission error: $e");
       return false;
     }
   }
 
-  // 🔹 Get devices
+  // 🔹 Get paired devices
   Future<List<BluetoothInfo>> getDevices() async {
     try {
       if (!await requestPermissions()) return [];
@@ -40,15 +53,13 @@ class RealBluetoothService {
       await disconnectPrinter();
 
       final formatted = _formatMacAddress(mac);
-
       print("Connecting to $formatted");
 
       final connectResult = await PrintBluetoothThermal.connect(
         macPrinterAddress: formatted,
       );
 
-      // Some devices report "connected" a moment later. Poll briefly so the
-      // first print doesn't get lost after fast navigation.
+      // Poll briefly — some devices report "connected" with a slight delay
       for (int i = 0; i < 6; i++) {
         final isConnected = await PrintBluetoothThermal.connectionStatus;
         if (isConnected) return connectResult;
@@ -64,16 +75,14 @@ class RealBluetoothService {
 
   Future<void> disconnectPrinter() async {
     try {
-      // Don't rely only on connectionStatus (it can lag).
       await PrintBluetoothThermal.disconnect;
     } catch (_) {}
   }
 
-  // 🔹 Ensure connection (IMPORTANT)
+  // 🔹 Ensure connection
   Future<bool> ensureConnected(String mac) async {
     try {
       bool isConnected = await PrintBluetoothThermal.connectionStatus;
-
       print("Connection status: $isConnected");
 
       if (!isConnected) {
@@ -81,18 +90,15 @@ class RealBluetoothService {
         return await connectPrinter(mac);
       }
 
-      // Give the printer a small buffer window right after connect/ensure
-      // so the very first writeBytes doesn't get dropped.
       await Future.delayed(const Duration(milliseconds: 600));
       return true;
-
     } catch (e) {
       print("Ensure error: $e");
       return false;
     }
   }
 
-  // 🔹 Format MAC
+  // 🔹 Format MAC address
   String _formatMacAddress(String mac) {
     if (mac.contains(':') && mac.length == 17) {
       return mac.toUpperCase();
@@ -101,16 +107,15 @@ class RealBluetoothService {
     String cleaned = mac.replaceAll(RegExp(r'[:\s-]'), '').toUpperCase();
 
     if (cleaned.length == 12) {
-      return cleaned.replaceAllMapped(
-        RegExp(r'(.{2})'),
-        (m) => '${m.group(1)}:',
-      ).substring(0, 17);
+      return cleaned
+          .replaceAllMapped(RegExp(r'(.{2})'), (m) => '${m.group(1)}:')
+          .substring(0, 17);
     }
 
     return mac;
   }
 
-  // 🔹 PRINT (FINAL)
+  // 🔹 Print receipt
   Future<void> printReceipt({
     required String mac,
     required String customerName,
@@ -126,44 +131,30 @@ class RealBluetoothService {
       }
 
       List<int> bytes = [];
-
       const line = "--------------------------------";
 
       bytes.addAll(utf8.encode("\n"));
       bytes.addAll(utf8.encode("      EZY CABLE DIGI\n"));
       bytes.addAll(utf8.encode("     PAYMENT RECEIPT\n"));
       bytes.addAll(utf8.encode("$line\n"));
-
       bytes.addAll(utf8.encode("Date : $date\n"));
       bytes.addAll(utf8.encode("$line\n"));
-
       bytes.addAll(utf8.encode("Customer : $customerName\n"));
       bytes.addAll(utf8.encode("Mobile   : $mobile\n"));
       bytes.addAll(utf8.encode("$line\n"));
-
       bytes.addAll(utf8.encode("Description        Amount\n"));
       bytes.addAll(utf8.encode("$line\n"));
-
-      String bill = _formatRow("Cable Bill", "₹$amount");
-      bytes.addAll(utf8.encode("$bill\n"));
-
+      bytes.addAll(utf8.encode("${_formatRow("Cable Bill", "₹$amount")}\n"));
       bytes.addAll(utf8.encode("$line\n"));
-
-      String total = _formatRow("TOTAL", "₹$amount");
-      bytes.addAll(utf8.encode("$total\n"));
-
+      bytes.addAll(utf8.encode("${_formatRow("TOTAL", "₹$amount")}\n"));
       bytes.addAll(utf8.encode("$line\n"));
-
       bytes.addAll(utf8.encode("\n   Thank You Visit Again!\n\n\n"));
 
       await Future.delayed(const Duration(milliseconds: 600));
-
       await PrintBluetoothThermal.writeBytes(bytes);
-
       await Future.delayed(const Duration(milliseconds: 500));
 
       print("Printed successfully");
-
     } catch (e) {
       print("Print error: $e");
       rethrow;
@@ -174,7 +165,6 @@ class RealBluetoothService {
     const width = 32;
     int space = width - (left.length + right.length);
     if (space < 1) space = 1;
-
     return left + " " * space + right;
   }
 }

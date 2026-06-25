@@ -1,14 +1,20 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:ezi_cable_digi/core/services/auth_service.dart';
+import 'package:ezi_cable_digi/core/services/error_handler_service.dart';
 import 'package:ezi_cable_digi/features/dashboard/dashboard_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:glassmorphism/glassmorphism.dart';
 import 'package:lottie/lottie.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
 import '../../core/services/location_sync_service.dart';
 import '../../core/services/offline_mode_service.dart';
 import '../offline/offline_dashboard_screen.dart';
 import '../../widgets/primary_button.dart';
+import '../../core/config/app_config.dart';
+import '../../core/utils/app_strings.dart';
+import '../../core/theme/app_theme.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -27,6 +33,16 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     LocationSyncService.instance.onScreenOpened(TrackingScreen.login);
+    _requestPermissions();
+  }
+
+  /// Asks for Location + Nearby Devices (Bluetooth) as soon as login screen opens.
+  Future<void> _requestPermissions() async {
+    await [
+      Permission.locationWhenInUse,  // shows Location dialog
+      Permission.bluetoothScan,      // shows "Nearby devices" dialog on Android 12+
+      Permission.bluetoothConnect,
+    ].request();
   }
 
   Future<void> _handleLogin() async {
@@ -42,16 +58,25 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
 
-    await Future<void>.delayed(const Duration(milliseconds: 700));
+    try {
+      final result = await AuthService.instance.login(
+        username: username,
+        password: password,
+      );
 
-    if (username == 'admin' && password == '123456') {
       if (!mounted) return;
+
+      if (!result.success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result.message)),
+        );
+        return;
+      }
+
       final connectivity = await Connectivity().checkConnectivity();
       final noNetwork = connectivity.contains(ConnectivityResult.none);
       if (!mounted) return;
 
-      // If internet is available, go online (and clear any stale offline flag).
-      // If internet is not available, go offline dashboard.
       await OfflineModeService.instance.setOfflineMode(noNetwork);
       if (!mounted) return;
 
@@ -62,15 +87,17 @@ class _LoginScreenState extends State<LoginScreen> {
               : const DashboardScreen(),
         ),
       );
-    } else {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid credentials')),
-      );
-    }
-
-    if (mounted) {
-      setState(() => _isLoading = false);
+    } catch (error, stackTrace) {
+      ErrorHandlerService.recordError(error, stackTrace, reason: 'LoginScreen._handleLogin');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Login failed. Please try again.')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -79,11 +106,31 @@ class _LoginScreenState extends State<LoginScreen> {
     final size = MediaQuery.of(context).size;
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
 
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
-      body: Stack(
-        children: [
+    return Theme(
+      data: AppTheme.theme1,
+      child: Scaffold(
+        backgroundColor: AppTheme.theme1.scaffoldBackgroundColor,
+        resizeToAvoidBottomInset: false,
+        body: Stack(
+          children: [
+DropdownButton<String>(
+  value: AppStrings.currentLang,
+  items: const [
+    DropdownMenuItem(value: 'en', child: Text('English')),
+    DropdownMenuItem(value: 'hi', child: Text('Hindi')),
+    DropdownMenuItem(value: 'te', child: Text('Telugu')),
+    DropdownMenuItem(value: 'ta', child: Text('Tamil')),
+    DropdownMenuItem(value: 'or', child: Text('Odia')),
+    DropdownMenuItem(value: 'bn', child: Text('Bengali')),
+    DropdownMenuItem(value: 'ml', child: Text('Malayalam')),
+  ],
+  onChanged: (value) {
+    AppStrings.currentLang = value!;
+    setState(() {});
+  },
+),
           Container(
+            
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 colors: [AppColors.primary, AppColors.secondary],
@@ -113,8 +160,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: TextStyle(color: Colors.white70, fontSize: 14),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Ezy Cable Digi',
+                   Text(
+                    AppConfig.instance.appName,
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 26,
@@ -134,7 +181,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               margin: const EdgeInsets.only(top: 38),
                               decoration: BoxDecoration(
                                 borderRadius:
-                                    BorderRadius.circular(AppSizes.radiusXL),
+                                BorderRadius.circular(AppSizes.radiusXL),
                                 boxShadow: [
                                   BoxShadow(
                                     color: Colors.black.withValues(alpha: 0.22),
@@ -182,13 +229,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                     child: Column(
                                       mainAxisSize: MainAxisSize.min,
                                       crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                      CrossAxisAlignment.start,
                                       children: [
                                         _GlassTextField(
                                           controller: _userController,
                                           hint: 'Username',
                                           lottieAsset:
-                                              'assets/Profile Icon.json',
+                                          'assets/Profile Icon.json',
                                         ),
                                         const SizedBox(height: AppSizes.paddingM),
                                         _GlassTextField(
@@ -204,8 +251,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                               value: _rememberMe,
                                               onChanged: (value) {
                                                 setState(() {
-                                                  _rememberMe =
-                                                      value ?? false;
+                                                  _rememberMe = value ?? false;
                                                 });
                                               },
                                               activeColor: AppColors.accent,
@@ -274,6 +320,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -356,4 +403,3 @@ class _GlassTextField extends StatelessWidget {
     );
   }
 }
-
